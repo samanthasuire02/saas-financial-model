@@ -203,17 +203,35 @@ export default function App() {
   }) => {
     const vals = data.map(d => Math.abs(d[valueKey]));
     const max = Math.max(...vals, 1);
+
+    // Stagger vertically when two milestones are within 4 months of each other
+    const milestoneStagger: Record<number, number> = {};
+    [...milestones].sort((a, b) => a.mo - b.mo).forEach((ml, idx, arr) => {
+      const prev = arr[idx - 1];
+      milestoneStagger[ml.mo] = prev && (ml.mo - prev.mo) < 5 ? 14 : 0;
+    });
+
     return (
       <div style={{position:"relative"}}>
-        <div style={{display:"flex",alignItems:"flex-end",gap:2,height,paddingTop:24,position:"relative"}}>
+        {/* alignItems:stretch gives each column a defined height so height:% on bars resolves correctly */}
+        <div style={{display:"flex",alignItems:"stretch",gap:2,height,paddingTop:32,position:"relative"}}>
           {data.map((d,i) => {
             const c = negKey ? (d[valueKey] > 0 ? "#E24B4A" : "#1D9E75") : color;
-            const h = Math.max(2,(Math.abs(d[valueKey])/max)*100);
+            const barH = Math.max(2,(Math.abs(d[valueKey])/max)*100);
             const isMilestone = milestones.find(ml => ml.mo === d.m);
+            const staggerTop = isMilestone ? (milestoneStagger[d.m] ?? 0) : 0;
+            // Near right edge: anchor label to the right so it doesn't overflow
+            const isRightEdge = d.m > 30;
+            const isLeftEdge = d.m < 5;
+            const labelPos = isRightEdge
+              ? {right:0}
+              : isLeftEdge
+              ? {left:0}
+              : {left:"50%",transform:"translateX(-50%)"};
             return (
-              <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",position:"relative",minWidth:0}}>
+              <div key={i} style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center",position:"relative",minWidth:0}}>
                 {isMilestone && (
-                  <div style={{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",
+                  <div style={{position:"absolute",top:staggerTop,...labelPos,
                     fontSize:9,background:"var(--color-background-info)",color:"var(--color-text-info)",
                     border:"0.5px solid var(--color-border-info)",borderRadius:3,
                     padding:"1px 3px",whiteSpace:"nowrap",zIndex:2,fontWeight:600}}>
@@ -223,13 +241,13 @@ export default function App() {
                 <div title={`Mo ${d.m}: ${fmt(d[valueKey])}`}
                   style={{width:"100%",background: isMilestone?"#EF9F27":c,
                     borderRadius:"2px 2px 0 0",opacity:0.85,
-                    height:`${h}%`,alignSelf:"flex-end",
+                    height:`${barH}%`,
                     border:isMilestone?"1px solid #EF9F27":"none"}} />
               </div>
             );
           })}
         </div>
-        <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"var(--color-text-tertiary)",marginTop:4}}>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"var(--color-text-tertiary)",marginTop:6}}>
           <span>Mo 1</span><span>Mo 12</span><span>Mo 24</span><span>Mo 36</span>
         </div>
       </div>
